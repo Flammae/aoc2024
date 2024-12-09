@@ -16,45 +16,58 @@ func abs(x int) int {
 	return x
 }
 
-func main() {
-	file, err := os.Open("./input.txt")
+func scan(fileName string, separator *regexp.Regexp, left *[]int, right *[]int) (error, int) {
+	file, err := os.Open(fileName)
 	if err != nil {
-		panic(err)
+		return err, 0
 	}
 	defer file.Close()
 
-	left := make([]int, 0)
-	right := make([]int, 0)
-
 	scanner := bufio.NewScanner(file)
-	regex := regexp.MustCompile("\\s+")
 
 	lineCount := 0
 
 	for scanner.Scan() {
 		lineCount++
-		result := regex.Split(scanner.Text(), 2)
+
+		result := separator.Split(scanner.Text(), 2)
 		leftToNumber, err := strconv.Atoi(result[0])
+
 		if err != nil {
-			panic(err)
+			return err, lineCount
 		}
 		rightToNumber, err := strconv.Atoi(result[1])
 		if err != nil {
-			panic(err)
+			return err, lineCount
 		}
-		left = append(left, leftToNumber)
-		right = append(right, rightToNumber)
+		*left = append(*left, leftToNumber)
+		*right = append(*right, rightToNumber)
+	}
+
+	return nil, lineCount
+}
+
+func sortAscending(slice []int) {
+	sort.Slice(slice, func(i, j int) bool {
+		return slice[i] < slice[j]
+	})
+}
+
+func main() {
+	left := make([]int, 0)
+	right := make([]int, 0)
+
+	err, lineCount := scan("./input.txt", regexp.MustCompile("\\s+"), &left, &right)
+
+	if err != nil {
+		panic(err)
 	}
 
 	fmt.Println("Line count:", lineCount)
 
-	sort.Slice(left, func(i, j int) bool {
-		return left[i] < left[j]
-	})
+	sortAscending(left)
 
-	sort.Slice(right, func(i, j int) bool {
-		return right[i] < right[j]
-	})
+	sortAscending(right)
 
 	totalDistance := 0
 	for i := 0; i < lineCount; i++ {
@@ -63,7 +76,4 @@ func main() {
 
 	fmt.Println("Total distance:", totalDistance)
 
-	if err := scanner.Err(); err != nil {
-		panic(err)
-	}
 }
