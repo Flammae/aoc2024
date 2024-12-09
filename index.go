@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"regexp"
 	"sort"
@@ -16,35 +15,37 @@ func abs(x int) int {
 	return x
 }
 
-func scan(fileName string, separator *regexp.Regexp, left *[]int, right *[]int) (error, int) {
-	file, err := os.Open(fileName)
-	if err != nil {
-		return err, 0
+type Scanner struct {
+	bufioScanner *bufio.Scanner
+	separator    *regexp.Regexp
+}
+
+func NewScanner(file *os.File, separator *regexp.Regexp) *Scanner {
+	return &Scanner{
+		bufioScanner: bufio.NewScanner(file),
+		separator:    separator,
 	}
-	defer file.Close()
+}
 
-	scanner := bufio.NewScanner(file)
+func (s *Scanner) Scan() bool {
+	return s.bufioScanner.Scan()
+}
 
-	lineCount := 0
+func (s *Scanner) Slice() (error, []int) {
+	text := s.bufioScanner.Text()
+	textSlice := s.separator.Split(text, -1)
 
-	for scanner.Scan() {
-		lineCount++
+	slice := make([]int, len(textSlice))
 
-		result := separator.Split(scanner.Text(), 2)
-		leftToNumber, err := strconv.Atoi(result[0])
-
+	for i, str := range textSlice {
+		toInt, err := strconv.Atoi(str)
 		if err != nil {
-			return err, lineCount
+			return err, nil
 		}
-		rightToNumber, err := strconv.Atoi(result[1])
-		if err != nil {
-			return err, lineCount
-		}
-		*left = append(*left, leftToNumber)
-		*right = append(*right, rightToNumber)
+		slice[i] = toInt
 	}
 
-	return nil, lineCount
+	return nil, slice
 }
 
 func sortAscending(slice []int) {
@@ -54,26 +55,51 @@ func sortAscending(slice []int) {
 }
 
 func main() {
-	left := make([]int, 0)
-	right := make([]int, 0)
-
-	err, lineCount := scan("./input.txt", regexp.MustCompile("\\s+"), &left, &right)
-
+	file, err := os.Open("./input.txt")
 	if err != nil {
 		panic(err)
 	}
+	defer file.Close()
 
-	fmt.Println("Line count:", lineCount)
+	scanner := NewScanner(file, regexp.MustCompile(`\s+`))
 
-	sortAscending(left)
+	safeCount := 0
 
-	sortAscending(right)
+	for scanner.Scan() {
+		err, slice := scanner.Slice()
+		if err != nil {
+			panic(err)
+		}
 
-	totalDistance := 0
-	for i := 0; i < lineCount; i++ {
-		totalDistance += abs(left[i] - right[i])
+		isAscending := slice[0] < slice[1]
+		isSafe := true
+		for i := 1; i < len(slice); i++ {
+			prev := slice[i-1]
+			curr := slice[i]
+
+			// Unsafe, based on rules
+			if prev == curr {
+				isSafe = false
+				break
+			}
+			if isAscending && prev > curr {
+				isSafe = false
+				break
+			}
+			if !isAscending && prev < curr {
+				isSafe = false
+				break
+			}
+			if abs(prev-curr) > 3 {
+				isSafe = false
+				break
+			}
+		}
+
+		if isSafe {
+			safeCount += 1
+		}
 	}
 
-	fmt.Println("Total distance:", totalDistance)
-
+	println("Safe count: ", safeCount)
 }
